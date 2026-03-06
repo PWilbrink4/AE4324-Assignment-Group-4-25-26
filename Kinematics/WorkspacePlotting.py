@@ -3,31 +3,25 @@ import matplotlib.pyplot as plt
 
 import DirectForwardKinematics as FK
 import TrajectoryTest as TT
+import RobotConstants as RC
 
-shoulder_joint_limits = np.radians(np.array([-90,90])) #deg to rad
-upper_joint_limits = np.radians(np.array([-90,90])) #deg to rad
-lower_joint_limits = np.radians(np.array([-90,90])) #deg to rad
-wrist_joint_limits = np.radians(np.array([-90,90])) #deg to rad
-gripper_joint_limits = np.radians(np.array([-90,90])) #deg to rad
+steps = 10
 
-steps = 5
-
-shoulder_angles = np.linspace(shoulder_joint_limits[0],shoulder_joint_limits[1],steps)
-upper_angles = np.linspace(upper_joint_limits[0],upper_joint_limits[1],steps)
-lower_angles = np.linspace(lower_joint_limits[0],lower_joint_limits[1],steps)
-wrist_angles = np.linspace(wrist_joint_limits[0],wrist_joint_limits[1],steps)
-gripper_angles = np.linspace(gripper_joint_limits[0],gripper_joint_limits[1],steps)
+shoulder_angles = np.linspace(RC.shoulder_joint_limits[0],RC.shoulder_joint_limits[1],steps)
+upper_angles = np.linspace(RC.upper_joint_limits[0],RC.upper_joint_limits[1],steps)
+lower_angles = np.linspace(RC.lower_joint_limits[0],RC.lower_joint_limits[1],steps)
+wrist_angles = np.linspace(RC.wrist_joint_limits[0],RC.wrist_joint_limits[1],steps)
 
 points = []
+theta_gripper = 0
 
 for theta_shoulder in shoulder_angles:
     for theta_upper in upper_angles:
         for theta_lower in lower_angles:
             for theta_wrist in wrist_angles:
-                for theta_gripper in gripper_angles:
-                    Transformation = FK.ForwardKinematics(np.array([theta_shoulder, theta_upper, theta_lower, theta_wrist, theta_gripper]))
-                    Point = np.array([Transformation[0,3],Transformation[1,3],Transformation[2,3]])
-                    points.append(Point)
+                Transformation = FK.ForwardKinematics(np.array([theta_shoulder, theta_upper, theta_lower, theta_wrist, theta_gripper]))
+                Point = np.array([Transformation[0,3],Transformation[1,3],Transformation[2,3]])
+                points.append(Point)
 
 points = np.array(points)
 print(points.shape)

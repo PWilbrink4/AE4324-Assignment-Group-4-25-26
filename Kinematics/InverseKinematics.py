@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from DirectForwardKinematics import ForwardKinematics, plot_robot_position
+import RobotConstants as RC
+import TrajectoryTest as TT
 
 def InverseKinematics(EE_state_vector):
     x,y,z,pitch,roll = EE_state_vector
@@ -51,8 +53,8 @@ def InverseKinematics(EE_state_vector):
     K1_2 = upper_length+lower_length*np.cos(theta2_2)
     K2_2 = lower_length*np.sin(theta2_2)
 
-    theta1_1 = np.arctan2(y_2R,x_2R)-np.atan2(K2_1,K1_1)  # Upper arm joint
-    theta1_2 = np.arctan2(y_2R,x_2R)-np.atan2(K2_2,K1_2) # Lower arm  joint
+    theta1_1 = np.arctan2(y_2R,x_2R)-np.arctan2(K2_1,K1_1)  # Upper arm joint
+    theta1_2 = np.arctan2(y_2R,x_2R)-np.arctan2(K2_2,K1_2) # Lower arm  joint
 
     theta_upper_1 = theta1_1 - upper_alpha
     theta_upper_2 = theta1_2 - upper_alpha
@@ -70,23 +72,62 @@ def InverseKinematics(EE_state_vector):
 
     return q_vector_1, q_vector_2
 
+def JointFeasibilityCheck(q_vector):
+    Feasibility = True
+    # Shoulder
+    if q_vector[0] < RC.shoulder_joint_limits[0] or q_vector[0]>RC.shoulder_joint_limits[1]:
+        Feasibility = False
+    elif q_vector[1] < RC.upper_joint_limits[0] or q_vector[1]>RC.upper_joint_limits[1]:
+        Feasibility = False
+    elif q_vector[2] < RC.lower_joint_limits[0] or q_vector[2]>RC.lower_joint_limits[1]:
+        Feasibility = False
+    elif q_vector[3] < RC.wrist_joint_limits[0] or q_vector[3]>RC.wrist_joint_limits[1]:
+        Feasibility = False
+    elif q_vector[4] < RC.gripper_joint_limits[0] or q_vector[4]>RC.gripper_joint_limits[1]:
+        Feasibility = False
+    else:
+        Feasibility = True
+
+    return Feasibility
+
+def SelectJointVector(first_q, second_q):
+    Feasibility_1 = JointFeasibilityCheck(first_q)
+    Feasibility_2 = JointFeasibilityCheck(second_q)
+    Feasible = True
+
+    if Feasibility_1:
+        return Feasible, first_q
+    elif Feasibility_2:
+        return Feasible, second_q
+    else:
+        Feasible = False
+        return Feasible, first_q
+
 if __name__ == '__main__':
     # State: X, Y, Z, pitch roll
-    point = [0.2, 0.2, 0.2, 1.57, 0.0]
-    # point = [0.2, 0.1, 0.4, 0.0, 1.57]
-    # point = [0.0, 0.0, 0.45, 0.785, 0.785]
-    # point = [0.0, 0.0, 0.07, 3.141, 0.0]
-    # point = [0.0, 0.0452, 0.45, 0.785, 3.141]
+    # points = np.array([[0.2, 0.2, 0.2, 1.57, 0.0],
+    #                    [0.2, 0.1, 0.4, 0.0, 1.57],
+    #                    [0.0, 0.0, 0.45, 0.785, 0.785],
+    #                    [0.0, 0.0, 0.07, 3.141, 0.0],
+    #                    [0.0, 0.0452, 0.45, 0.785, 3.141]])
 
-    q_vector_1, q_vector_2 = InverseKinematics(point)
+    for i in range(len(TT.cartesian_trajectory)):
+        valid = False
+        q_vector_1, q_vector_2 = InverseKinematics(TT.cartesian_trajectory[i])
 
-    print(f'Waypoint: {point}')
+        Feasible, q_vector = SelectJointVector(q_vector_1, q_vector_2)
 
-    print(f'\nq1 state: {q_vector_1}')
-    plot_robot_position(q_vector_1)
+        if Feasible:
+            plot_robot_position(q_vector)
+        else:
+            print("Unfeasible position, moving on")
 
-    print(f'\nq2 state: {q_vector_2}')
-    plot_robot_position(q_vector_2)
+        plt.show()
 
-    plt.show()
-
+    # print(f'Waypoint: {point}')
+    #
+    # print(f'\nq1 state: {q_vector_1}')
+    # plot_robot_position(q_vector_1)
+    #
+    # print(f'\nq2 state: {q_vector_2}')
+    # plot_robot_position(q_vector_2)
