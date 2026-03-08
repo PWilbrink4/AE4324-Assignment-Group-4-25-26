@@ -5,7 +5,7 @@ import DirectForwardKinematics as FK
 import TrajectoryTest as TT
 import RobotConstants as RC
 
-steps = 10
+steps = 5
 
 shoulder_angles = np.linspace(RC.shoulder_joint_limits[0],RC.shoulder_joint_limits[1],steps)
 upper_angles = np.linspace(RC.upper_joint_limits[0],RC.upper_joint_limits[1],steps)
