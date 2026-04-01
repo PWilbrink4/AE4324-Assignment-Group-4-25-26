@@ -1,0 +1,16 @@
+lerobot:
+  ros__parameters:
+    serial_port: "/dev/ttyUSB0"
+    baud_rate: 1000000
+    frequency: 10.0
+    gripper_open: 1.57079632679    # M_PI_2
+    gripper_closed: 0.0
+    max_speed: 0.8 # rad/s max speed
+    zero_positions: [2048, 2048, 2048, 2048, 2048, 2048]
+    ids: [11, 12, 13, 14, 15, 16]
+    joint_signs: [-1.0, -1.0, -1.0, -1.0, -1.0, 1.0] # Per-joint sign so HW matches URDF/sim (1 or -1). Order: Shoulder_Rotation, Shoulder_Pitch, Elbow, Wrist_Pitch, Wrist_Roll, Gripper
+    home_position: [0.0,0.0,-0.5,-1.0472,-1.5707] # Stacking home position
+    #Additional used home positions
+    #[-0.,1.20503807, -1.13527605, -0.06976201,  1.57079633] #Velocity control in y
+    #[0.0, 0.0,-0.5,-1.0472, -1.5707] # Stacking home position
+    #[0.0, 1.8326, -1.2217, -1.0472, -1.5707] # Original home position
