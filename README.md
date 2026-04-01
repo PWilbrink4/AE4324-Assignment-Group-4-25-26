@@ -24,8 +24,7 @@ the different kinematics functions:
 - SympyForwardKinematics.py
 
 Furthermore, perform tasks in preparation of runs with the real life robot, such as testing and visualisation of the trajectory:
-
-TrajectoryTest.py
-WorkspacePlotting.py
+- TrajectoryTest.py
+- WorkspacePlotting.py
 
 
