@@ -1,4 +1,8 @@
 
+
+# ####################### 4th code ######################################
+
+
 import rclpy
 import numpy as np
 from rclpy.node import Node
@@ -6,9 +10,9 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from builtin_interfaces.msg import Duration
 
 # ── GLOBAL TUNING ──────────────────────────────────────────
-SPEED_TRAVEL = 0.08  # Lower is slower (0.01 = very slow, 0.1 = fast) - For moving
-SPEED_PRECISION = 0.06   # Lower is slower - For precision tasks
-WAIT_TIME = 0.6    # Seconds to wait for jaw opening/closing
+SPEED_TRAVEL = 0.4  # Lower is slower (0.01 = very slow, 0.1 = fast) - For moving
+SPEED_PRECISION = 0.08   # Lower is slower - For precision tasks
+WAIT_TIME = 0.8    # Seconds to wait for jaw opening/closing
 
 class PickAndPlaceNode(Node):
 
@@ -34,18 +38,17 @@ class PickAndPlaceNode(Node):
         self._GRASP_VAL = (theta - self._GRIPPER_LOWER) / (self._GRIPPER_UPPER - self._GRIPPER_LOWER)
 
 
-
         # Poses: [x, y, z, pitch, roll]
-        self._PICK_POSE  = [-0.03, 0.12, 0.02, -np.pi/2, -1.5707]
-        self._PLACE_POSE = [0.10, 0.11, 0.02, -np.pi/2, -1.5707]
-        self.calibration = np.array([-0.033, -0.21, -0.06, 0.01, 0.02])   #needed to tune for errors in the physical robot setup
-        self._TRAVEL_Z   = 0.20  # Final height for safety
-       
+        self._PICK_POSE  = [-0.1, 0.14, 0.035, -np.pi/2, -1.5707]
+        self._PLACE_POSE = [0.13, 0.12, 0.035, -np.pi/2, -1.5707]
+        self.calibration = np.array([-0.033, -0.21, -0.06, 0.01, 0.02])
+        self._TRAVEL_Z   = 0.30  # Final height for safety
+        self._SQUARE_SIZE = 0.20 #square trajectory size
 
-        self._APPROACH_OFFSET = 0.04   # safe height above stacks where the robot moves before descending
+        self._APPROACH_OFFSET = 0.1   # safe height above stacks where the robot moves before descending
 
-        self._STACK_HEIGHT = 0.02   #height of each object
-        self._MAX_OBJECTS = 6       #maximum number of objects 
+        self._STACK_HEIGHT = 0.021   #height of each object
+        self._MAX_OBJECTS = 9       #maximum number of objects 
 
         #self._pick_stack_level = self._MAX_OBJECTS - 1   #pick stack starts full
         self._pick_stack_level = 0
@@ -57,7 +60,7 @@ class PickAndPlaceNode(Node):
         self._state = "APPROACH_PICK"
         self._wait_start_time = None
         self._old_q = np.array(self._HOME_Q)
-        self._gripper_val = 0.5 # Start Open
+        self._gripper_val = 0.6 # Start Open
         self._target_ik_q = np.array(self._HOME_Q) # Stores the current goal IK
         
         self._active_pick_pose = None
@@ -86,7 +89,7 @@ class PickAndPlaceNode(Node):
         return [
             pick_pose[0],
             pick_pose[1],
-            place_pose[2] + self._APPROACH_OFFSET - self._STACK_HEIGHT,
+            place_pose[2] + self._APPROACH_OFFSET, #- self._STACK_HEIGHT,
             pick_pose[3],
             pick_pose[4]
         ]
@@ -109,12 +112,12 @@ class PickAndPlaceNode(Node):
         msg = JointTrajectory()
         msg.header.stamp = now.to_msg()
         
-        
+        print(self._state)
         target_cartesian = np.zeros(5)
 
         # ── STATE LOGIC: Setting the Cartesian Goal ──────────────────────
         if self._state == "APPROACH_PICK":
-            self._gripper_val = 0.4 
+            self._gripper_val = 0.6 
             target_cartesian = self._get_pick_approach_pose()
         
         elif self._state == "DESCEND_TO_PICK":
@@ -127,16 +130,19 @@ class PickAndPlaceNode(Node):
 
             t = min(elapsed, WAIT_TIME)
 
-            # Cosine easing for gripper movement
+            # Cosine easing
 
             s = 0.5 * (1 + np.cos(np.pi * t / WAIT_TIME))
 
             start = 0.4
             end = self._GRASP_VAL
 
+
+
             # Smooth slow jaw closing
             self._gripper_val = end + (start - end ) * s
             if elapsed >= WAIT_TIME:
+            #if abs(self._gripper_val - end) < 0.01:
                 self._gripper_val = end
                 self._state = "LIFTING"
                 self._just_changed_state = True
@@ -149,6 +155,8 @@ class PickAndPlaceNode(Node):
                 pick_pose[0],
                 pick_pose[1],
                 place_pose[2] + self._APPROACH_OFFSET,
+                #self._TRAVEL_Z,
+                #self._APPROACH_OFFSET + self._place_stack_level * self._STACK_HEIGHT,    #changed _TRAVEL_Z to _APPROACH_OFFSET
                 pick_pose[3],
                 pick_pose[4]
             ]
@@ -177,8 +185,11 @@ class PickAndPlaceNode(Node):
             self._gripper_val = start + (end - start) * s
             if elapsed >= WAIT_TIME:
                 self._gripper_val = end
+                #self._pick_stack_level -= 1
                 self._place_stack_level += 1
                 self.get_logger().info(f"Pick Stack level : {self._pick_stack_level}, Place stack level : {self._place_stack_level}")
+                #self._state = "RESET_LIFT"
+                #self._just_changed_state = True
                 if self._place_stack_level >= self._MAX_OBJECTS:
                     self.get_logger().info("Stacking complete. All objects placed.")
                     self._state = "DONE"
@@ -191,7 +202,7 @@ class PickAndPlaceNode(Node):
             target_cartesian = [
                 self._PLACE_POSE[0], 
                 self._PLACE_POSE[1], 
-                self._APPROACH_OFFSET + self._place_stack_level * self._STACK_HEIGHT,           
+                self._APPROACH_OFFSET + self._place_stack_level * self._STACK_HEIGHT,           #replaced _TRAVEL_Z with _APPROACH_OFFSET
                 self._PLACE_POSE[3], 
                 self._PLACE_POSE[4]
             ]
@@ -204,6 +215,7 @@ class PickAndPlaceNode(Node):
                 self._PLACE_POSE[3], 
                 self._PLACE_POSE[4]
             ]
+            #self.get_logger().info("Stacking complete. All objects placed.")
 
 
         if self._state in ["APPROACH_PICK", "DESCEND_TO_PICK", "GRASPING", "LOWERING", "RELEASING"]:
@@ -232,11 +244,13 @@ class PickAndPlaceNode(Node):
         pitch_iter = 0
         base_pitch = target_cartesian[3]
         while not valid and pitch_iter < 20:
+            #target_cartesian [3] = -np.pi/2
+            #target_cartesian[3] = 0.0
             target_cartesian[3] = -np.pi/2 + (-1)**(pitch_iter) * 0.025 * np.pi * pitch_iter
             pitch_iter += 1
             q_results = InverseKinematics(target_cartesian)
             chosen_q, valid = SelectJointVector(q_results, old_q=self._old_q)
-            chosen_q = chosen_q + self.calibration
+            #chosen_q = chosen_q + self.calibration
         if valid:
             self._target_ik_q = chosen_q # Update what we are trying to reach
             # The 'Speed' happens here:
@@ -293,9 +307,11 @@ class PickAndPlaceNode(Node):
 
         dist = np.linalg.norm(current_xyz - target_xyz)
 
-        return dist < 0.002
+        return dist < 0.005
         
-
+        dist = np.linalg.norm(self._old_q - self._target_ik_q)
+        #self.get_logger().info(f"Joint distance: {dist}")
+        return dist < 0.01
 
     def _compute_move_time(self, q_target):
         dist = np.linalg.norm(self._old_q - q_target)
@@ -303,6 +319,7 @@ class PickAndPlaceNode(Node):
         return max(0.4, dist/speed)
 
     def _publish_joints(self, q, gripper, msg, duration = 1.0):
+        #self._old_q = np.array(q)
         point = JointTrajectoryPoint()
         point.positions = [float(q[0]), float(q[1]), float(q[2]), float(q[3]), float(q[4]), float(gripper)]
 
@@ -467,7 +484,7 @@ def ForwardKinematics(q):
 
 
 def JointFeasibilityCheck(q):
-    lims = [(-1.96, 2.15), (-1.99, 1.67), (-1.62, 1.74), (-1.82, 1.80), (-2.93, 2.92)]
+    lims = [(-1.96, 2.15), (-1.99, 1.67), (-1.62, 1.74), (-1.82, 1.80), (-6, 6)]
     return all(lims[i][0] <= q[i] <= lims[i][1] for i in range(5))
 
 def SelectJointVector(qs, old_q):
