@@ -2,6 +2,11 @@ import numpy as np
 import sympy as sp
 
 
+'''This file was used to find the symbolic expression for the forward kinematics with sympy, 
+and functions exactly like the derivation in the paper/the functions in DirectForwardKinematics.py
+Running it returns X, Y and Z, and can be used to find the jacobian derivatives
+'''
+
 theta_shoulder = sp.symbols('theta_shoulder') #Shoulder joint
 theta_upper = sp.symbols('theta_upper') #Upper arm joint
 theta_lower = sp.symbols('theta_lower') #Lower arm  joint
@@ -46,6 +51,48 @@ def SympyHomogeneousTransformation(rotation_matrix,translation_matrix):
     T = T.row_insert(3,sp.Matrix([[0,0,0,1]]))
     return T
 
+def SympyFixed_angles_to_rotation_matrix(rot_x, rot_y, rot_z):
+    ca = sp.cos(rot_x)
+    sa = sp.sin(rot_x)
+    cb = sp.cos(rot_y)
+    sb = sp.sin(rot_y)
+    cg = sp.cos(rot_z)
+    sg = sp.sin(rot_z)
+
+    R = sp.Matrix([
+        [cb*cg,-sb*sg,sb],
+        [sa*sb*cg+ca*sg,-sa*sb*sg+ca*cg,-sa*cb],
+        [-ca*sb*cg+sa*sg,ca*sb*sg+sa*cg,ca*cb]
+    ])
+    return R
+
+def SympyRelative_angles_to_rotation_matrix(yaw, pitch, roll):
+    ca = sp.cos(yaw)
+    sa = sp.sin(yaw)
+    cb = sp.cos(pitch)
+    sb = sp.sin(pitch)
+    cg = sp.cos(roll)
+    sg = sp.sin(roll)
+
+    R = sp.Matrix([
+        [ca*cb,ca*sb*sg-sa*cg,ca*sb*cg+sa*sg],
+        [sa*cb,sa*sb*sg+ca*cg,sa*sb*cg-ca*sg],
+        [-sb,cb*sg,cb*cg]
+    ])
+    return R
+
+def SympyRelative_angles_from_matrix(R):
+    yaw = sp.atan2(R[1,0],R[0,0])
+    pitch = -sp.asin(R[2,0])
+    roll = sp.atan2(R[2,1],R[2,2])
+    return yaw, pitch, roll
+
+def SympyFixed_angles_from_matrix(R):
+    rot_x = -sp.atan2(R[1,2],R[2,2])
+    rot_y = sp.asin(R[0,2])
+    rot_z = -sp.atan2(R[0,1],R[0,0])
+    return rot_x, rot_y, rot_z
+
 Zero_translation = SympyTranslationMatrix(0,0,0)
 #R_i_j means rotation of frame j with respect to frame i
 R_world_base = SympyRotationMatrix_Z(sp.pi)
@@ -79,8 +126,30 @@ P_gripper_grippercenter = SympyTranslationMatrix(0,0,0.075)
 T_gripper_grippercenter = SympyHomogeneousTransformation(SympyRotationMatrix_Z(theta_gripper),Zero_translation)*SympyHomogeneousTransformation(R_gripper_grippercenter,P_gripper_grippercenter)
 
 T_world_grippercenter = T_world_base*T_base_shoulder*T_shoulder_upper*T_upper_lower*T_lower_wrist*T_wrist_gripper*T_gripper_grippercenter
+T_world_gripper = T_world_base*T_base_shoulder*T_shoulder_upper*T_upper_lower*T_lower_wrist*T_wrist_gripper
 
-sp.simplify(T_world_grippercenter)
+x_gripper = T_world_grippercenter[0,3]
+y_gripper = T_world_grippercenter[1,3]
+z_gripper = T_world_grippercenter[2,3]
 
-sp.pprint(T_world_grippercenter[2,2])
+x = sp.simplify(x_gripper)
+y = sp.simplify(y_gripper)
+z = sp.simplify(z_gripper)
+
+print(x)
+print(y)
+print(z)
+
+pitch = theta_upper + theta_lower + theta_wrist
+roll = theta_gripper
+
+Jacobian = sp.Matrix([
+    [sp.diff(x,theta_shoulder),sp.diff(x,theta_upper),sp.diff(x,theta_lower),sp.diff(x,theta_wrist),sp.diff(x,theta_gripper)],
+    [sp.diff(y,theta_shoulder),sp.diff(y,theta_upper),sp.diff(y,theta_lower),sp.diff(y,theta_wrist),sp.diff(y,theta_gripper)],
+    [sp.diff(z,theta_shoulder),sp.diff(z,theta_upper),sp.diff(z,theta_lower),sp.diff(z,theta_wrist),sp.diff(z,theta_gripper)],
+    [sp.diff(pitch,theta_shoulder),sp.diff(pitch,theta_upper),sp.diff(pitch,theta_lower),sp.diff(pitch,theta_wrist),sp.diff(pitch,theta_gripper)],
+    [sp.diff(roll,theta_shoulder),sp.diff(roll,theta_upper),sp.diff(roll,theta_lower),sp.diff(roll,theta_wrist),sp.diff(roll,theta_gripper)],
+])
+
+#print(sp.simplify(Jacobian[0,0]))
 

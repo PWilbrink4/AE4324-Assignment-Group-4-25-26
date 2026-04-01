@@ -2,15 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import InverseKinematics as IK
 
-number_waypoints = 10
-radius_circle = 0.1
-x_offset = 0
-z_offset = 0.25
-y_offset = 0.2
+'''This file is used to generate and test the feasibility of trajectories'''
 
-pitch = 0
+number_waypoints = 10
+radius_circle = 0.08
+x_offset = 0
+z_offset = 0.05
+y_offset = 0.22
+
+pitch = -np.pi/2
 roll = 0
-yaw=0
+yaw  =0
 
 cartesian_trajectory = np.zeros((number_waypoints+1, 5))
 jointspace_trajectory_1 = np.zeros((number_waypoints, 5))
@@ -19,11 +21,11 @@ jointspace_trajectory_3 = np.zeros((number_waypoints, 5))
 jointspace_trajectory_4 = np.zeros((number_waypoints, 5))
 
 for i in range(number_waypoints):
-    cartesian_trajectory[i, 0] = x_offset+radius_circle*np.cos(2*np.pi*i/(number_waypoints-1))
+    cartesian_trajectory[i, 0] = x_offset+1.5*radius_circle*np.cos(2*np.pi*i/(number_waypoints-1))
     cartesian_trajectory[i, 1] = y_offset+radius_circle*np.sin(2*np.pi*i/(number_waypoints-1))
-    cartesian_trajectory[i, 2] = z_offset-0.1*np.sin(2*np.pi*i/(number_waypoints-1))
+    cartesian_trajectory[i, 2] = z_offset
     cartesian_trajectory[i, 3] = pitch
-    cartesian_trajectory[i, 4] = roll
+    cartesian_trajectory[i, 4] = np.arctan2(cartesian_trajectory[i, 1],cartesian_trajectory[i, 0])
 
 if __name__ == "__main__":
     for i in range(number_waypoints):
@@ -79,3 +81,10 @@ if __name__ == "__main__":
 #     cartesian_trajectory[i, 2] = z_offset-0.1*np.sin(2*np.pi*i/number_waypoints)
 #     cartesian_trajectory[i, 3] = pitch
 #     cartesian_trajectory[i, 4] = roll
+
+
+# cartesian_trajectory[0] = x_offset + 2 * radius_circle * np.cos(2 * np.pi / 10.0 * dt)
+# cartesian_trajectory[1] = y_offset + radius_circle * np.sin(2 * np.pi / 10.0 * dt)
+# cartesian_trajectory[2] = z_offset
+# cartesian_trajectory[3] = pitch
+# cartesian_trajectory[4] = np.arctan2(cartesian_trajectory[1], cartesian_trajectory[0])

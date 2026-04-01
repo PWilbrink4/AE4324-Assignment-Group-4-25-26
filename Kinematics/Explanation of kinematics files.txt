@@ -1,0 +1,17 @@
+The files in this folder were used to define and test the various functions for the kinematics of the robot,
+such as the inverse kinematics, forward kinematics, and Jacobian:
+
+DirectForwardKinematics.py
+InverseKinematics.py
+JacobianDef.py
+
+Additionally, certain standalone tasks that didnt require the robot were performed, such as plotting the workspace and finding the symbolic expressions of
+the different kinematics functions:
+
+WorkspacePlotting.py
+SympyForwardKinematics.py
+
+Furthermore, it hosts tasks in preparation of runs with the real life robot, such as testing and visualisation of the trajectory:
+
+TrajectoryTest.py
+WorkspacePlotting.py
