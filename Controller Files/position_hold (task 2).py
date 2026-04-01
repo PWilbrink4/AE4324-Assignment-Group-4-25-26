@@ -22,6 +22,7 @@ class ExampleTraj(Node):
         self.old_q = self._HOME
         self.jaw = 0.15*np.pi
 
+        '''Input hold position'''
         self.hold_position = [-0.91211132,-1.80315694,3.45338614,-1.64943287,2.22079633]
 
     def timer_callback(self):

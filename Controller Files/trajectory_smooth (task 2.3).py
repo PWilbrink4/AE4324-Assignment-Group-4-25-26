@@ -27,6 +27,7 @@ class ExampleTraj(Node):
         msg = JointTrajectory()
         msg.header.stamp = now.to_msg()
 
+        '''Input trajectory'''
         dt = (now - self._beginning).nanoseconds * (1e-9)
         radius_circle = 0.08
         x_offset = 0
@@ -50,6 +51,7 @@ class ExampleTraj(Node):
         #     self.jaw = 0.3*np.pi
         # elif self.jaw < 0:
         #     self.jaw = 0.0
+        '''Iterate over pitch'''
         while not valid and pitch_iter < 20:
             cartesian_trajectory[3] = cartesian_trajectory[3]+(-1)**(pitch_iter)*0.025*np.pi*pitch_iter
             pitch_iter += 1

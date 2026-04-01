@@ -190,11 +190,6 @@ def InverseKinematics6States(EE_state_vector):
     print("EE Orientation yaw pitch roll")
     print(EE_yaw_rotation, pitch, roll)
 
-
-
-    #TODO discuss the pitch roll changing into xrot, yrot, zrot (me no like, doesnt make sense)
-    #TODO Maybe check for pitch2 = pi-pitch ?
-
     # Robot joint positions
     y_shoulder = 0.0452
 
@@ -331,24 +326,6 @@ def InverseKinematics6States(EE_state_vector):
 
 if __name__ == "__main__":
 
-            # Feasible, q_vector = SelectJointVector(q_vector_1, q_vector_2)
-            #
-            # if Feasible:
-            #     plot_robot_position(q_vector)
-            # else:
-            #     print("Unfeasible position, moving on")
-
-    # point1 = [0.2, 0.2, 0.2, 1.57, 0.0] #pitch roll
-    # point2 = [0.2, 0.1, 0.4, 0.0, 1.57]
-    # point3 = [0.0, 0.0, 0.45, 0.785, 0.785]
-    # point4 = [0.0, 0.0, 0.07, 3.141, 0.0]
-    # point5 = [0.0, 0.0452, 0.45, 0.785, 3.141]
-
-    # point1 = [0.2, 0.2, 0.2, 0.000, 1.570, 0.650]
-    # point2 = [0.2, 0.1, 0.4, 0.000, 0.000, -1.570]
-    # point3 = [0.0, 0.0, 0.4, 0.000, -0.785, 1.570]
-    # point4 = [0.0, 0.0, 0.07, 3.141, 0.000, 0.000]
-    # point5 = [0.0, 0.0452, 0.45, -0.785, 0.000, 3.141]
     #
     point1 = [0.2, 0.2, 0.2, 0.000, 1.570, 0.650] # Individual (direct) position possible (indirect kinda close), orientation isnt -> Z-axis yaw is impossible ### Only Direct, elbow up possible on real robot
     point2 = [0.2, 0.1, 0.4, 0.000, 0.000, -1.570] # Position fully possible ### Only Direct, elbow up possible on real robot. Indirect also feasible and gets kinda close, but not exact
@@ -356,13 +333,8 @@ if __name__ == "__main__":
     point4 = [0.0, 0.0, 0.07, 3.141, 0.000, 0.000] # Position possible in IK, but not feasible in robot joints/through itself
     point5 = [0.0, 0.0452, 0.45, -0.785, 0.000, 3.141] # Position + orientation possible (close not exact), Feasible with direct shoulder
     #
-    # point = point1
-    # x,y,z = point[0:3]
-    # x_rot, y_rot, z_rot = point[3:6]
-    # a, b, c = Relative_angles_from_matrix(Fixed_angles_to_rotation_matrix(x_rot,y_rot,z_rot))
-    # pitch, roll = -c, b
-    # better_point = np.array([x,y,z,pitch,roll])
-    # better_point = SixStates_to_FiveStates(point3)
+
+    '''Change this value to generate the visualisation and get solutions for the specific target points for task 2'''
     better_point = point1
 
     q_home = [np.deg2rad(0), np.deg2rad(105), np.deg2rad(-70), np.deg2rad(-60), np.deg2rad(0)]
@@ -385,6 +357,13 @@ if __name__ == "__main__":
 
     plt.show()
 
+    # point = point1
+    # x,y,z = point[0:3]
+    # x_rot, y_rot, z_rot = point[3:6]
+    # a, b, c = Relative_angles_from_matrix(Fixed_angles_to_rotation_matrix(x_rot,y_rot,z_rot))
+    # pitch, roll = -c, b
+    # better_point = np.array([x,y,z,pitch,roll])
+    # better_point = SixStates_to_FiveStates(point3)
 
 
     # q_home = [np.deg2rad(0), np.deg2rad(105),np.deg2rad(-70), np.deg2rad(-60),np.deg2rad(0)]
@@ -490,3 +469,23 @@ if __name__ == "__main__":
     # ani = FuncAnimation(fig, update, frames=len(q_history), interval=1000, repeat=True,repeat_delay=3000)
     #
     # plt.show()
+
+
+            # Feasible, q_vector = SelectJointVector(q_vector_1, q_vector_2)
+            #
+            # if Feasible:
+            #     plot_robot_position(q_vector)
+            # else:
+            #     print("Unfeasible position, moving on")
+
+    # point1 = [0.2, 0.2, 0.2, 1.57, 0.0] #pitch roll
+    # point2 = [0.2, 0.1, 0.4, 0.0, 1.57]
+    # point3 = [0.0, 0.0, 0.45, 0.785, 0.785]
+    # point4 = [0.0, 0.0, 0.07, 3.141, 0.0]
+    # point5 = [0.0, 0.0452, 0.45, 0.785, 3.141]
+
+    # point1 = [0.2, 0.2, 0.2, 0.000, 1.570, 0.650]
+    # point2 = [0.2, 0.1, 0.4, 0.000, 0.000, -1.570]
+    # point3 = [0.0, 0.0, 0.4, 0.000, -0.785, 1.570]
+    # point4 = [0.0, 0.0, 0.07, 3.141, 0.000, 0.000]
+    # point5 = [0.0, 0.0452, 0.45, -0.785, 0.000, 3.141]

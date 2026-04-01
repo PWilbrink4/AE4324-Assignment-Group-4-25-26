@@ -414,6 +414,29 @@ def Fixed_angles_from_matrix(R):
     rot_z = -np.arctan2(R[0,1],R[0,0])
     return rot_x, rot_y, rot_z
 
+
+
+
+if __name__ == '__main__':
+
+    '''Used to generate example positions from joint angles'''
+    q_vector = np.radians(np.array([0,0,0,0,0])) #shoulder, upper, lower, wrist, gripper
+
+    plot_robot_position(np.radians(np.array([0,0,0,0,0])))
+
+    plot_robot_position(np.radians(np.array([45,45,-45,45,45])))
+
+    plot_robot_position([0.0, 1.8326, -1.2217, -0.6109, -1.5707])
+
+    plt.show()
+
+    print(Fixed_angles_to_rotation_matrix(np.radians(30), np.radians(40), np.radians(-10)))
+    print(np.degrees(Fixed_angles_from_matrix(Fixed_angles_to_rotation_matrix(np.radians(30), np.radians(40), np.radians(-10)))))
+
+
+
+
+
 # def SixStates_to_FiveStates(state):
 #     x = state[0]
 #     y = state[1]
@@ -444,18 +467,3 @@ def Fixed_angles_from_matrix(R):
 #     new_state = np.array([x,y,z,rel_pitch,rel_roll])
 #     print(new_state)
 #     return new_state
-
-
-if __name__ == '__main__':
-    q_vector = np.radians(np.array([0,0,0,0,0])) #shoulder, upper, lower, wrist, gripper
-
-    plot_robot_position(np.radians(np.array([0,0,0,0,0])))
-
-    plot_robot_position(np.radians(np.array([45,45,-45,45,45])))
-
-    plot_robot_position([0.0, 1.8326, -1.2217, -0.6109, -1.5707])
-
-    plt.show()
-
-    print(Fixed_angles_to_rotation_matrix(np.radians(30), np.radians(40), np.radians(-10)))
-    print(np.degrees(Fixed_angles_from_matrix(Fixed_angles_to_rotation_matrix(np.radians(30), np.radians(40), np.radians(-10)))))

@@ -9,6 +9,7 @@ import RobotConstants as RC
 '''This file is used to generate plots of the workspace based on the forward kinematics and joint constraints
 '''
 
+'''Recommended to keep the steps low if just checking, else will take a while to plot'''
 steps = 20
 # shoulder_angles = np.linspace(RC.shoulder_joint_limits[0],RC.shoulder_joint_limits[1],2*steps)
 # upper_angles = np.linspace(RC.upper_joint_limits[0],RC.upper_joint_limits[1],steps)
