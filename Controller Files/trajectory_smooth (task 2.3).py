@@ -1,0 +1,227 @@
+import rclpy
+import numpy as np
+from rclpy.node import Node
+
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+
+'''This file is used to get the smooth trajectory of the described ellipse'''
+
+class ExampleTraj(Node):
+
+    def __init__(self):
+        super().__init__('example_trajectory')
+
+        # Home matches URDF/sim: 0, 105°, -70°, -60°, 0 deg
+        self._HOME = [np.deg2rad(0), np.deg2rad(105),
+                      np.deg2rad(-70), np.deg2rad(-60),
+                      np.deg2rad(0)]
+        self._beginning = self.get_clock().now()
+        self._publisher = self.create_publisher(JointTrajectory, 'joint_cmds', 10)
+        timer_period = 0.04  # seconds
+        self._timer = self.create_timer(timer_period, self.timer_callback)
+        self.old_q = self._HOME
+        self.jaw = 0.15*np.pi
+
+    def timer_callback(self):
+        now = self.get_clock().now()
+        msg = JointTrajectory()
+        msg.header.stamp = now.to_msg()
+
+        dt = (now - self._beginning).nanoseconds * (1e-9)
+        radius_circle = 0.08
+        x_offset = 0
+        z_offset = 0.05
+        y_offset = 0.22
+
+        pitch = -np.pi/2
+        roll = np.pi/2 #((2 * np.pi / 10.0 * dt) % 2*np.pi) - np.pi (spinny spin)
+        yaw = 0
+
+        valid = False
+        pitch_iter = 0
+        cartesian_trajectory = np.zeros(5)
+        cartesian_trajectory[0] = x_offset + 1.5*radius_circle * np.cos(2 * np.pi / 10.0 * dt)
+        cartesian_trajectory[1] = y_offset + radius_circle * np.sin(2 * np.pi / 10.0 * dt)
+        cartesian_trajectory[2] = z_offset
+        cartesian_trajectory[3] = pitch
+        cartesian_trajectory[4] = np.arctan2(cartesian_trajectory[1],cartesian_trajectory[0])
+        # self.jaw = self.jaw + 0.05*np.pi*(np.random.rand() - 0.5) #yapper mode
+        # if self.jaw > 0.3*np.pi:
+        #     self.jaw = 0.3*np.pi
+        # elif self.jaw < 0:
+        #     self.jaw = 0.0
+        while not valid and pitch_iter < 20:
+            cartesian_trajectory[3] = cartesian_trajectory[3]+(-1)**(pitch_iter)*0.025*np.pi*pitch_iter
+            pitch_iter += 1
+            q_vector_1, q_vector_2, q_vector_3, q_vector_4 = InverseKinematics(cartesian_trajectory)
+            chosen_q, valid = SelectJointVector([q_vector_1,q_vector_2,q_vector_3,q_vector_4],old_q=self.old_q)
+        self.old_q = chosen_q
+        print(f'Feasible solution found: {valid}')
+        print(f'After {pitch_iter} iterations')
+
+        point = JointTrajectoryPoint()
+        point.positions = [chosen_q[0],
+                           chosen_q[1],
+                           chosen_q[2],
+                           chosen_q[3],
+                           chosen_q[4],
+                           0.0] #self.jaw
+        msg.points = [point]
+
+        self._publisher.publish(msg)
+        
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    example_traj = ExampleTraj()
+
+    rclpy.spin(example_traj)
+
+    # Destroy the node explicitly
+    # (optional - otherwise it will be done automatically
+    # when the garbage collector destroys the node object)
+    example_traj.destroy_node()
+    rclpy.shutdown()
+
+def InverseKinematics(EE_state_vector):
+    x,y,z,pitch,roll = EE_state_vector
+
+    #TODO discuss the pitch roll changing into xrot, yrot, zrot (me no like, doesnt make sense)
+    #TODO Maybe check for pitch2 = pi-pitch ?
+
+    # Robot joint positions
+    y_shoulder = 0.0452
+
+    # Since this is the only "yaw" joint rotation
+    theta_shoulder_1 = np.arctan2(-x,y-y_shoulder) #shoulder joint
+    theta_shoulder_2 = np.arctan2(x,-(y-y_shoulder))
+
+    '''Starting derivation for upper and lower arm'''
+    length_wrist_to_gripcenter = 0.0601+0.075
+
+    z_world_to_upper = 0.1025 + 0.0165
+    GL_shoulder_to_upper = 0.0306 #GL -> Ground length, specifically xy plane
+    GL_shoulder_to_gripcenter = np.sqrt(x**2+(y-y_shoulder)**2)
+    z_wrist = z - length_wrist_to_gripcenter*np.sin(pitch)
+
+    ### Define 2D-2R problem
+    x_2R_1 = GL_shoulder_to_gripcenter-GL_shoulder_to_upper-length_wrist_to_gripcenter*np.cos(pitch) #1: ThetaShoulder1
+    x_2R_2 = -(GL_shoulder_to_gripcenter+GL_shoulder_to_upper+length_wrist_to_gripcenter*np.cos(pitch)) #2: ThetaShoulder2
+    y_2R = z_wrist-z_world_to_upper
+
+    ## Define lengths of segments and their offsets
+    upper_x_length = 0.028
+    upper_y_length = 0.11257
+    upper_length = np.sqrt(upper_x_length**2 + upper_y_length**2)
+    upper_alpha = np.arctan2(upper_y_length,upper_x_length) #Converting to axis aligned with joint
+
+    lower_x_length = 0.1349
+    lower_y_length = 0.0052
+    lower_length = np.sqrt(lower_x_length**2 + lower_y_length**2)
+    lower_beta = np.pi/2 - np.arctan2(upper_x_length,upper_y_length) - np.arctan2(lower_y_length,lower_x_length) #Converting to axis aligned with joint
+
+    '''Direct pitch, Direct thetashoulder, elbow down'''
+    # Cosine from the geometry
+    cos_equiv_1 = ((x_2R_1)**2+(y_2R)**2-upper_length**2-lower_length**2)/(2*upper_length*lower_length)
+    # Sin can be +- -> gives elbow up and down solution
+    sin_equiv_1_1 = np.sqrt(1-cos_equiv_1**2)
+    #Find theta2
+    theta2_1_1 = np.arctan2(sin_equiv_1_1, cos_equiv_1)
+    # Calculate Theta_lower
+    theta_lower_1_1 = theta2_1_1 + lower_beta # Lower arm joint
+    # Use method to find theta 1 (Theta_1 is a substitute to align angle with links for derivation)
+    K1_1_1 = upper_length+lower_length*np.cos(theta2_1_1) ### Define factors for theta lower
+    K2_1_1 = lower_length*np.sin(theta2_1_1)
+    theta1_1_1 = np.arctan2(y_2R,x_2R_1)-np.arctan2(K2_1_1,K1_1_1)
+    #Calculate Theta_Upper
+    theta_upper_1_1 = theta1_1_1 - upper_alpha
+    #Calculate Theta_Wrist
+    theta_wrist_1_1 = pitch - theta_upper_1_1 - theta_lower_1_1  # Wrist joint
+
+    '''Direct pitch, Direct thetashoulder, elbow up'''
+    # Redo for the other sin
+    sin_equiv_1_2 = -np.sqrt(1-cos_equiv_1**2)
+    theta2_1_2 = np.arctan2(sin_equiv_1_2, cos_equiv_1)
+    theta_lower_1_2 = theta2_1_2 + lower_beta # Lower arm joint
+    K1_1_2 = upper_length+lower_length*np.cos(theta2_1_2)
+    K2_1_2 = lower_length*np.sin(theta2_1_2)
+    theta1_1_2 = np.arctan2(y_2R,x_2R_1)-np.arctan2(K2_1_2,K1_1_2)
+    theta_upper_1_2 = theta1_1_2 - upper_alpha # Upper arm joint
+    theta_wrist_1_2 = pitch - theta_upper_1_2 - theta_lower_1_2  # Wrist joint
+
+    '''Direct pitch, Indirect thetashoulder, elbow down'''
+    # Redo but for different theta_shoulder
+    cos_equiv_2 = ((x_2R_2) ** 2 + (y_2R) ** 2 - upper_length ** 2 - lower_length ** 2) / (2 * upper_length * lower_length)
+
+    sin_equiv_2_1 = np.sqrt(1-cos_equiv_2**2)
+    theta2_2_1 = np.arctan2(sin_equiv_2_1,cos_equiv_2)
+    theta_lower_2_1 = theta2_2_1 + lower_beta # Lower arm joint
+    K1_2_1 = upper_length+lower_length*np.cos(theta2_2_1)
+    K2_2_1 = lower_length*np.sin(theta2_2_1)
+    theta1_2_1 = np.arctan2(y_2R,x_2R_2)-np.arctan2(K2_2_1,K1_2_1)
+    theta_upper_2_1 = theta1_2_1 - upper_alpha # Upper arm joint
+    theta_wrist_2_1 = pitch - theta_upper_2_1 - theta_lower_2_1  # Wrist joint
+
+    '''Direct pitch, Indirect thetashoulder, elbow up'''
+    sin_equiv_2_2 = -np.sqrt(1-cos_equiv_2**2)
+    theta2_2_2 = np.arctan2(sin_equiv_2_2,cos_equiv_2)
+    theta_lower_2_2 = theta2_2_2 + lower_beta # Lower arm joint
+    K1_2_2 = upper_length+lower_length*np.cos(theta2_2_2)
+    K2_2_2 = lower_length*np.sin(theta2_2_2)
+    theta1_2_2 = np.arctan2(y_2R,x_2R_2)-np.arctan2(K2_2_2,K1_2_2)
+    theta_upper_2_2 = theta1_2_2 - upper_alpha # Upper arm joint
+    theta_wrist_2_2 = pitch - theta_upper_2_2 - theta_lower_2_2  # Wrist joint
+
+    # Gripper roll joint
+    theta_gripper = roll
+
+    #Define vector
+    q_vector_1_1 = np.array([theta_shoulder_1,theta_upper_1_1,theta_lower_1_1,theta_wrist_1_1,theta_gripper]) #Direct Thetashoulder, upper/lower/theta elbow ...
+    q_vector_1_2 = np.array([theta_shoulder_1, theta_upper_1_2, theta_lower_1_2, theta_wrist_1_2, theta_gripper]) #Direct Thetashoulder, upper/lower/theta elbow ...
+    q_vector_2_1 = np.array([theta_shoulder_2,theta_upper_2_1,theta_lower_2_1,theta_wrist_2_1,theta_gripper]) #Direct Thetashoulder, upper/lower/theta elbow ...
+    q_vector_2_2 = np.array([theta_shoulder_2, theta_upper_2_2, theta_lower_2_2, theta_wrist_2_2, theta_gripper]) #Direct Thetashoulder, upper/lower/theta elbow ...
+
+    return q_vector_1_1, q_vector_1_2, q_vector_2_1, q_vector_2_2
+
+def JointFeasibilityCheck(q_vector):
+    Feasibility = True
+    shoulder_joint_limits = np.array([-1.96, 2.15])  # rad
+    upper_joint_limits = np.array([-1.99, 1.67])  # rad
+    lower_joint_limits = np.array([-1.62, 1.74])  # rad
+    wrist_joint_limits = np.array([-1.82, 1.80])  # rad
+    gripper_joint_limits = np.array([-2.93, 2.92])  # rad
+    # Shoulder
+    if q_vector[0] < shoulder_joint_limits[0] or q_vector[0]>shoulder_joint_limits[1] or np.isnan(q_vector[0]):
+        Feasibility = False
+    elif q_vector[1] < upper_joint_limits[0] or q_vector[1]>upper_joint_limits[1] or np.isnan(q_vector[1]):
+        Feasibility = False
+    elif q_vector[2] < lower_joint_limits[0] or q_vector[2]>lower_joint_limits[1] or np.isnan(q_vector[2]):
+        Feasibility = False
+    elif q_vector[3] < wrist_joint_limits[0] or q_vector[3]>wrist_joint_limits[1] or q_vector[3] == np.nan:
+        Feasibility = False
+    elif q_vector[4] < gripper_joint_limits[0] or q_vector[4]>gripper_joint_limits[1] or q_vector[4] == np.nan:
+        Feasibility = False
+
+    return Feasibility
+
+def SelectJointVector(q_list,old_q):
+    FeasibileVectorList = []
+
+    for q in q_list:
+        if JointFeasibilityCheck(q) == True:
+            FeasibileVectorList.append(q)
+
+    if len(FeasibileVectorList) > 0:
+        DiffArray = np.zeros(len(FeasibileVectorList))
+        for i in range(len(FeasibileVectorList)):
+            DiffArray[i] = np.linalg.norm((FeasibileVectorList[i]-old_q)**2)
+
+        newQ_index = np.argsort(DiffArray == min(DiffArray))[0]
+
+        return FeasibileVectorList[newQ_index], True
+    else:
+        return old_q, False
+
+if __name__ == '__main__':
+    main()
