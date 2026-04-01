@@ -136,6 +136,7 @@ x = sp.simplify(x_gripper)
 y = sp.simplify(y_gripper)
 z = sp.simplify(z_gripper)
 
+'''Printing the X, Y and Z symbolics for the gripper center'''
 print(x)
 print(y)
 print(z)
@@ -151,5 +152,6 @@ Jacobian = sp.Matrix([
     [sp.diff(roll,theta_shoulder),sp.diff(roll,theta_upper),sp.diff(roll,theta_lower),sp.diff(roll,theta_wrist),sp.diff(roll,theta_gripper)],
 ])
 
-#print(sp.simplify(Jacobian[0,0]))
+'''Change the index to get different symbolic representations'''
+print(sp.simplify(Jacobian[0,0]))
 
